@@ -4,8 +4,8 @@ import torch.optim
 import os
 
 # import configs
-from network import BSRTrain, Decoder
-
+from network import BSRTrain
+import configs
 from io_utils import model_dict, parse_args
 from datasets import miniImageNet_few_shot
 
@@ -42,7 +42,7 @@ if __name__=='__main__':
     datamgr = miniImageNet_few_shot.SimpleDataManager(image_size, batch_size=16)
     base_loader = datamgr.get_data_loader(aug=params.train_aug)
 
-    model = BSRTrain(model_dict[params.model], params.num_classes, lamda=params.lamda)
+    model = BSRTrain(model_dict[params.model], params.num_classes, lamda1=params.lamda1, lamda2=params.lamda2)
 
     model = model.cuda()
     save_dir = configs.save_dir

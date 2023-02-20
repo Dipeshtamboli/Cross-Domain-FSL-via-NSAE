@@ -18,9 +18,29 @@ from io_utils import parse_args
 # 2× 2 Deconv-ReLU, 64 filters, stride 2, padding 0
 # 3×3 Conv-Sigmoid, 3 filters, stride 1, padding 1
 
-class Decoder(nn.Module):
-    def __init__(self,):
-        super(Decoder, self).__init__()
+# class Decoder(nn.Module):
+#     def __init__(self,):
+#         super(Decoder, self).__init__()
+
+
+
+
+
+class BSRTrain(nn.Module):
+    def __init__(self, model_func, num_class, lamda1=1, lamda2=1):
+        super(BSRTrain, self).__init__()
+        self.feature = model_func()
+
+        self.classifier = nn.Linear(self.feature.final_feat_dim, num_class)
+        self.classifier.weight.data.normal_(0, 0.01)
+        self.classifier.bias.data.fill_(0.0)
+
+        self.num_class = num_class
+        self.loss_fn = nn.CrossEntropyLoss()
+        self.top1 = utils.AverageMeter()
+        self.lamda1 = lamda1
+        self.lamda2 = lamda2
+
         self.decoder = nn.Sequential(
             nn.Linear(512, 512),
             nn.ReLU(),
@@ -39,39 +59,36 @@ class Decoder(nn.Module):
             nn.Sigmoid()
         )
 
-    def forward(self, x):
-        x = self.decoder(x)
-        return x
-
-
-class BSRTrain(nn.Module):
-    def __init__(self, model_func, num_class, lamda=0.001):
-        super(BSRTrain, self).__init__()
-        self.feature = model_func()
-
-        self.classifier = nn.Linear(self.feature.final_feat_dim, num_class)
-        self.classifier.weight.data.normal_(0, 0.01)
-        self.classifier.bias.data.fill_(0.0)
-
-        self.num_class = num_class
-        self.loss_fn = nn.CrossEntropyLoss()
-        self.top1 = utils.AverageMeter()
-        self.lamda = lamda
 
     def forward(self, x):
         x = Variable(x.cuda())
+
         feature = self.feature(x)
-        u, s, v = torch.svd(feature.t())
-        BSR = torch.sum(torch.pow(s, 2))
+        x_hat = self.decoder(feature)
+        x_hat_feats = self.feature(x_hat)
         scores = self.classifier(feature)
-        return scores, feature, BSR
+        x_hat_scores = self.classifier(x_hat_feats)
+        # u, s, v = torch.svd(feature.t())
+        # BSR = torch.sum(torch.pow(s, 2))
+        return scores, x_hat, x_hat_scores
+
+    # def decoder_f(self, x):
+    #     x = self.decoder(x)
+    #     return x
 
     def forward_loss(self, x, y):
         y = Variable(y.cuda())
 
-        scores, BSR = self.forward(x)
+        # scores, BSR, _ = self.forward(x)
+        scores, x_hat, x_hat_scores = self.forward(x)
         loss_c = self.loss_fn(scores, y)
-        loss = loss_c + self.lamda * BSR
+        loss_c_hat = self.loss_fn(x_hat_scores, y)
+
+        # loss = loss_c + self.lamda * BSR
+        # mse loss between x and x_hat
+        # pdb.set_trace()
+        loss = loss_c + self.lamda1 * torch.mean((x.cuda() - x_hat) ** 2) + self.lamda2 * loss_c_hat
+        
 
         _, predicted = torch.max(scores.data, 1)
         correct = predicted.eq(y.data).cpu().sum()
@@ -94,50 +111,6 @@ class BSRTrain(nn.Module):
                       format(epoch, i, len(train_loader), avg_loss / float(i + 1), self.top1.val, self.top1.avg))
 
 
-class PBSRTrain(nn.Module):
-    def __init__(self, model_func, num_class, P_matrix, lamda=0.001):
-        super(PBSRTrain, self).__init__()
-
-        self.resnet1 = nn.Sequential(*list(model_func()._modules.values())[0][0:6])
-        self.resnet2 = nn.Sequential(*list(model_func()._modules.values())[0][6:7])
-        self.resnet3 = nn.Sequential(*list(model_func()._modules.values())[0][7:8])
-        self.layer1 = nn.Sequential(*list(model_func()._modules.values())[0][8:])
-
-        self.classifier = nn.Linear(model_func().final_feat_dim - 1, num_class)
-        self.classifier.bias.data.fill_(0)
-
-        self.num_class = num_class
-        self.loss_fn = nn.CrossEntropyLoss()
-        self.top1 = utils.AverageMeter()
-
-        self.P_matrix = P_matrix
-        self.lamda = lamda
-
-    def forward(self, x):
-        x = Variable(x.cuda())
-        out1 = self.resnet1(x)
-        out2 = self.resnet2(out1)
-        out3 = self.resnet3(out2)
-        fea_b = self.layer1(out3)
-        fea_e = torch.mm(fea_b, self.P_matrix)
-        u, s, v = torch.svd(fea_e.t())
-        BSR = torch.sum(torch.pow(s, 2))
-        scores = self.classifier(fea_e)
-        return scores, BSR
-
-    def forward_loss(self, x, y):
-        y = Variable(y.cuda())
-
-        scores, BSR = self.forward(x)
-
-        loss_c = self.loss_fn(scores, y)
-        loss = loss_c + self.lamda * BSR
-
-        _, predicted = torch.max(scores.data, 1)
-        correct = predicted.eq(y.data).cpu().sum()
-        self.top1.update(correct.item() * 100 / (y.size(0) + 0.0), y.size(0))
-
-        return loss
 
 if __name__ == '__main__':
     params = parse_args('train')
