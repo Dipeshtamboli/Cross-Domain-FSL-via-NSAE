@@ -58,7 +58,8 @@ class SetDataset:
             self.sub_meta[label].append(data)
 
         for key, item in self.sub_meta.items():
-            print (len(self.sub_meta[key]))
+            # print (len(self.sub_meta[key]))
+            pass
     
         self.sub_dataloader = [] 
         sub_data_loader_params = dict(batch_size = batch_size,

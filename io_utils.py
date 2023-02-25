@@ -20,7 +20,7 @@ def parse_args(script):
         parser.add_argument('--num_classes' , default=200, type=int, help='total number of classes in softmax, only used in baseline') #make it larger than the maximum label value in base class
         parser.add_argument('--save_freq'   , default=50, type=int, help='Save frequency')
         parser.add_argument('--start_epoch' , default=0, type=int,help ='Starting epoch')
-        parser.add_argument('--stop_epoch'  , default=400, type=int, help ='Stopping epoch')
+        parser.add_argument('--stop_epoch'  , default=1, type=int, help ='Stopping epoch')
     elif script == 'finetune':
         parser.add_argument('--dtarget', default='CropDisease', choices=['CropDisease', 'EuroSAT', 'ISIC', 'ChestX'])
         parser.add_argument('--test_n_way', default=5, type=int, help='class num to classify for testing')
