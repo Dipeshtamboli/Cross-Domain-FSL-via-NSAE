@@ -136,7 +136,6 @@ def finetune(model, optimizer, novel_loader, finetune_epochs_recon, finetune_epo
         correct_lp = float(top1_correct_lp)
         print('BSR+LP: %f' % (correct_lp / count_this * 100))
         acc_all_lp.append((correct_lp / count_this * 100))
-        ###############################################################################################
 
     acc_all_ori  = np.asarray(acc_all_ori)
     acc_mean_ori = np.mean(acc_all_ori)
@@ -149,8 +148,6 @@ def finetune(model, optimizer, novel_loader, finetune_epochs_recon, finetune_epo
     acc_std_lp = np.std(acc_all_lp)
     print('BSR+LP: %d Test Acc = %4.2f%% +- %4.2f%%' %
           (finetune_epochs, acc_mean_lp, 1.96 * acc_std_lp / np.sqrt(finetune_epochs)))
-
-
 
 
 if __name__=='__main__':
@@ -194,6 +191,6 @@ if __name__=='__main__':
     start_epoch = params.start_epoch
     stop_epoch = params.stop_epoch
 
-    # model = train(base_loader, model, optimizer, start_epoch, stop_epoch, params)
+    model = train(base_loader, model, optimizer, start_epoch, stop_epoch, params)
 
     model = finetune(model, optimizer, novel_loader, finetune_epochs_recon, finetune_epochs, **few_shot_params)
